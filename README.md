@@ -14,6 +14,10 @@ One file: `index.html`. No build, no backend, no sign in, no external AI calls. 
 
 Pay logic: K150 per held meeting Ernest attended, at most 6 paid per calendar month in the first 90 days from her start date, plus K300 per client won (always paid). The app shows estimates only. Ernest confirms every meeting held and every client won.
 
+## Where it lives
+
+Live at https://diyama-setter.vercel.app. Vercel project `diyama-setter` on team `tres4`, connected to GitHub `trsr2218/setterDSL`. **Every push to `main` deploys to production automatically.** To change the app: edit `index.html`, commit, push. Nothing else.
+
 ## How to give it to Angel
 
 Pick one.
