@@ -1,4 +1,4 @@
-# Diyama Setter
+# Angel's Office
 
 Angel Nawa's work app for appointment setting at Diyama Solutions. It is made for her phone: a daily to-do list, a pipeline tracker, a meetings page that makes sure Ernest attends every call she books, the 14 day training, and a library of short sales tips. Version 2.
 
@@ -22,14 +22,14 @@ Live at https://diyama-setter.vercel.app. Vercel project `diyama-setter` on team
 
 Pick one.
 
-1. **Static site on Vercel (recommended).** Import this `app` folder as a new Vercel project. Framework preset: Other. No build command. Output directory: `.`. Suggested address: `setter.diyama.online`. Send Angel the link.
+1. **Static site on Vercel (recommended).** Import this `app` folder as a new Vercel project. Framework preset: Other. No build command. Output directory: `.`. Suggested address: `angel.diyama.online`. Send Angel the link.
 2. **Send her the file.** Send `index.html` on WhatsApp. She saves it and opens it in Chrome. It works fully, but "Add to Home screen" as an app only works properly from the web address in option 1.
 
 ## How Angel opens it and adds it to her home screen
 
 1. Open the link in **Chrome** on her Android phone.
 2. Tap the three dots menu, then **Add to Home screen** (or **Install app**).
-3. It appears as "Diyama Setter" with the teal D icon and opens full screen.
+3. It appears as "Angel's Office" with the teal D icon and opens full screen.
 
 On an iPhone: open in Safari, tap Share, then Add to Home Screen.
 
