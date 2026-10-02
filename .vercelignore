@@ -1,0 +1,7 @@
+README.md
+.env*
+.gitignore
+.vercel
+.claude
+_deploy.log
+*.log
