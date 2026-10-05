@@ -20,6 +20,8 @@ Live at https://diyama-setter.vercel.app. Vercel project `diyama-setter` on team
 
 **Updates never lose her data.** Her data lives in the phone's browser under `diyama_setter_v2`, which no deploy touches. Never rename that key; add new fields to `blank()` and `mergeV2()`. Open copies check the live `app-version`: coming back to the app updates at once, while she is working a bar offers "Update now" so nothing being typed is lost. A snapshot is saved to `diyama_setter_v2_before_update` before each update and is restored automatically if the main copy is ever missing. Data is per address: angel.diyama.online and diyama-setter.vercel.app keep separate copies, so she should only use one.
 
+**Activity log**: the app records what happens (opened, lesson opened and completed, quiz answers, businesses added, activity logged, meetings booked and their steps and outcomes, reports sent, updates) and posts it to `api/log.js`, which keeps only allow-listed events and fields and stores each batch privately in the Vercel Blob store `angel-office-log` (team tres4, linked to this project). Business names only, never people's names, phone numbers or notes. Events queue on the phone while offline. Read it from this folder with `node tools/read-log.mjs` (last 7 days, Lusaka time), `--days 30`, or `--json`. The token is in `.env.local` (gitignored); if missing, `vercel env pull .env.local --scope tres4`. Angel is told on her Today card what is shared.
+
 **Progress to Ernest**: the Today page has "Send progress to Ernest", one tap to WhatsApp with lessons done, the next lesson, pipeline counts, follow-ups due and meetings waiting for his YES. Counts only, no client numbers.
 
 ## How to give it to Angel
