@@ -5,3 +5,5 @@ README.md
 .claude
 _deploy.log
 *.log
+node_modules
+tools

@@ -7,7 +7,7 @@
 <meta name="description" content="Internal work app for Diyama appointment setters: today's list, pipeline, meetings and training." />
 <meta name="robots" content="noindex, nofollow" />
 <!-- Bump on every deploy. Open copies compare it against the live file and update themselves. -->
-<meta name="app-version" content="2026-10-05.1" />
+<meta name="app-version" content="2026-10-05.2" />
 <script defer src="/_vercel/insights/script.js"></script>
 <meta name="theme-color" content="#1f5c4d" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -1422,7 +1422,10 @@ function renderNav(){
   $("topnav").innerHTML = h; $("botnav").innerHTML = h;
   var ph = $("phase"); ph.textContent = laptop() ? "Laptop: reading only" : phaseText(); ph.className = "phase" + (training() || laptop() ? "" : " live");
 }
-function go(v, sub){ ui.view = v; ui.sub = sub || ""; render(); window.scrollTo(0, 0); }
+function go(v, sub){
+  ui.view = v; ui.sub = sub || ""; render(); window.scrollTo(0, 0);
+  var vk = v + (sub ? "/" + sub : ""); if(vk !== lastView){ lastView = vk; track("viewed", {page:vk}); }
+}
 function render(){
   renderNav();
   if(!DEVICE){ $("view").innerHTML = viewDevice(); return; }
@@ -1527,8 +1530,8 @@ function viewToday(){
     '<div class="small muted" style="font-weight:700; margin-bottom:4px">' + esc(fmtMonth(mon)) + ', estimate</div><div class="math">' + esc(mm.math) + '</div>' +
     (mm.capped ? '<p class="small muted" style="margin:8px 0 0">' + mm.capped + ' held meeting(s) this month are over the cap of ' + CAP_MONTH + ' paid in the first 90 days, so their K150 is not counted. A client won still pays K300.</p>' : '') +
     '<p class="small muted" style="margin:8px 0 0">Ernest confirms every meeting held and every client won. His confirmation is the payment.</p></div>';
-  h += '<div class="card"><div class="eyebrow">For Ernest</div><h3>Send my progress</h3><p class="small muted">One tap opens WhatsApp to Ernest with your lessons and pipeline numbers. Send it at the end of every working day.</p>' +
-    '<div class="mbtns"><a class="btn btn-primary" href="' + esc(waLink(ERNEST_WA, progressReport())) + '" target="_blank" rel="noopener">Send progress to Ernest</a><button class="btn btn-outline" data-act="copyprogress" type="button">Copy it</button></div></div>';
+  h += '<div class="card"><div class="eyebrow">For Ernest</div><h3>Send my progress</h3><p class="small muted">One tap opens WhatsApp to Ernest with your lessons and pipeline numbers. Send it at the end of every working day. Your office also notes when you open it, finish a lesson, add a business or book a meeting, so Ernest can follow your progress. Business names only. Never the names of people, phone numbers or your notes.</p>' +
+    '<div class="mbtns"><a class="btn btn-primary" href="' + esc(waLink(ERNEST_WA, progressReport())) + '" data-log="progress_sent" target="_blank" rel="noopener">Send progress to Ernest</a><button class="btn btn-outline" data-act="copyprogress" type="button">Copy it</button></div></div>';
   h += '<div class="quick"><button class="btn btn-outline" data-act="addbiz" type="button">+ Business</button><button class="btn btn-primary" data-act="addmeet" type="button">+ Meeting</button></div>';
   return h;
 }
@@ -1816,7 +1819,7 @@ function viewMoney(){
     }).join("") + '</tbody></table></div></div>';
   }
   h += '<div class="card"><div class="eyebrow">Every Friday</div><h3>Weekly report to Ernest</h3><p class="small muted">Opens WhatsApp to Ernest with this week\'s numbers. Read it before you send.</p><pre class="paste">' + esc(weeklyReport()) + '</pre>' +
-    '<div class="mbtns"><a class="btn btn-primary" href="' + esc(waLink(ERNEST_WA, weeklyReport())) + '" target="_blank" rel="noopener">Send weekly report</a><button class="btn btn-outline" data-act="copyreport" type="button">Copy the report</button></div></div>';
+    '<div class="mbtns"><a class="btn btn-primary" href="' + esc(waLink(ERNEST_WA, weeklyReport())) + '" data-log="weekly_report_sent" target="_blank" rel="noopener">Send weekly report</a><button class="btn btn-outline" data-act="copyreport" type="button">Copy the report</button></div></div>';
   return h;
 }
 function weeklyReport(){
@@ -1896,6 +1899,7 @@ function saveBiz(){
   b.channel = val("bf_ch"); b.phone = val("bf_phone"); b.sells = val("bf_sells"); b.broken = val("bf_broken");
   b.product = val("bf_prod"); b.origin = val("bf_origin") || "Angel Nawa"; b.notes = val("bf_notes");
   if(isNew){ S.biz.unshift(b); logActivity(b, "research", "Added to the pipeline"); }
+  track(isNew ? "business_added" : "business_edited", {business:b.name, type:b.type, territory:b.territory});
   save(); closeSheet(); ui.view = "pipeline"; ui.stage = "all"; ui.flash = "b_" + b.id; render();
   toast(isNew ? "Business added. Next: the first message." : "Saved");
 }
@@ -1943,6 +1947,7 @@ function saveLog(){
   var err = logActivity(b, sheet.type, note);
   if(err){ toast(err); return; }
   var lbl = actType(sheet.type).l;
+  track("activity", {business:b.name, what:lbl, stage:b.stage});
   closeSheet(); ui.flash = "b_" + b.id; ui.tip = null; render();
   toast(b.stopped ? STOP_MSG : lbl + " logged" + (b.nextDate && b.next ? ". Next: " + fmtDate(b.nextDate) : ""));
 }
@@ -2006,6 +2011,7 @@ function saveMeet(){
   }
   if(!b.dm) b.dm = dm;
   b.stage = "Meeting booked"; b.next = "Meeting " + fmtDate(date) + " at " + time; b.nextDate = date; b.waiting = false; b.stopped = false; b.replied = true; b.fu = 0;
+  track(isNew ? (m.rescheduleOf ? "meeting_rescheduled" : "meeting_booked") : "meeting_edited", {business:b.name, date:date, time:time, channel:m.channel});
   save(); closeSheet(); ui.view = "meetings"; ui.flash = "m_" + m.id; render();
   toast(isNew || moved ? "Saved. Now send the brief to Ernest." : "Saved");
 }
@@ -2014,6 +2020,7 @@ function saveMeet(){
 function setOutcome(m, status, note){
   var b = findBiz(m.bizId);
   m.status = status; m.outcomeAt = Date.now(); if(note) m.note = note;
+  track("meeting_outcome", {business:m.business, outcome:status === "held" ? "held, Ernest attended" : "no show"});
   if(b){
     if(status === "held"){ b.stage = m.won ? "Won" : "Held"; b.next = "Ernest follows up with the client"; b.nextDate = ""; pushAct(b, "held", note); }
     else if(status === "noshow"){ b.stage = "Replied"; b.next = "Rebook: offer two new times"; b.nextDate = today(); pushAct(b, "noshow", note); }
@@ -2054,7 +2061,7 @@ document.addEventListener("click", function(e){
     if(d.todo === "biz"){ ui.view = "pipeline"; ui.stage = "all"; ui.q = ""; ui.openBiz[id] = true; ui.flash = "b_" + id; render(); return; }
   }
   if(d.ob !== undefined){ ui.ob = +d.ob; render(); window.scrollTo(0, 0); return; }
-  if(d.device){ setDevice(d.device); ui.view = "today"; ui.sub = ""; ui.tip = null; render(); window.scrollTo(0, 0); toast(d.device === "laptop" ? "Laptop set. Log your work on your phone." : "Phone set. Your work is saved here."); return; }
+  if(d.device){ setDevice(d.device); track("device_set", {device:d.device}); ui.view = "today"; ui.sub = ""; ui.tip = null; render(); window.scrollTo(0, 0); toast(d.device === "laptop" ? "Laptop set. Log your work on your phone." : "Phone set. Your work is saved here."); return; }
   if(d.more){ if(d.more === "theme"){ toggleTheme(); render(); return; }
     if(d.more === "device"){ if(confirm(laptop() ? "Change this device to your phone? Only do this on your phone." : "Change this device to your laptop? Your saved work stays on this device but is hidden.")){ setDevice(""); ui.view = "today"; ui.sub = ""; render(); } return; }
     go("more", d.more); return; }
@@ -2069,7 +2076,7 @@ document.addEventListener("click", function(e){
   if(d.mstep){
     var m = findMeet(id); if(!m) return;
     var stamp = Date.now(), key = {brief:"briefAt", reminder:"reminderAt", nudge:"nudgeAt", client:"clientConfAt"}[d.mstep];
-    if(key){ m[key] = stamp; save(); setTimeout(render, 400); }
+    if(key){ m[key] = stamp; save(); setTimeout(render, 400); track("meeting_step", {business:m.business, step:{brief:"brief sent to Ernest", reminder:"day-before reminder sent", nudge:"one hour nudge sent", client:"client confirmation sent"}[d.mstep]}); }
     return; /* the link itself opens WhatsApp */
   }
   if(d.ics){ var mi = findMeet(d.ics); if(mi){ download("diyama-call-" + mi.date + ".ics", icsText(mi), "text/calendar"); mi.icsAt = Date.now(); save(); toast("Calendar file saved. Forward it to Ernest on WhatsApp."); } return; }
@@ -2089,7 +2096,7 @@ document.addEventListener("click", function(e){
     mh.attended = true; setOutcome(mh, "held", val("hn_" + d.saveheld)); delete ui.outc[d.saveheld]; ui.showPast = true; ui.flash = "m_" + mh.id; render(); toast("Held. Well done."); return;
   }
   if(d.reopen){ var mr = findMeet(d.reopen); if(mr && confirm("Change the outcome of this meeting?")){ mr.status = "booked"; mr.attended = false; mr.won = false; mr.wonDate = ""; mr.outcomeAt = ""; save(); render(); } return; }
-  if(d.open){ var no = +d.open; ui.openDay = (ui.openDay === no ? null : no); render(); var de = $("day" + no); if(de) de.scrollIntoView({block:"nearest"}); return; }
+  if(d.open){ var no = +d.open; ui.openDay = (ui.openDay === no ? null : no); if(ui.openDay === no) track("lesson_opened", {lesson:no, title:DAYS[no - 1] && DAYS[no - 1].title}); render(); var de = $("day" + no); if(de) de.scrollIntoView({block:"nearest"}); return; }
   if(d.skip){ S.skip[+d.skip] = true; save(); render(); toast("Unlocked"); return; }
   if(d.copyday){ copyText(DAYS[+d.copyday - 1].paste()); return; }
   if(d.copytxt !== undefined){ copyText(d.copytxt); return; }
@@ -2098,6 +2105,7 @@ document.addEventListener("click", function(e){
     S.quiz.ans[qi] = oj;
     var r = 0; QUIZ.forEach(function(q, i){ if(S.quiz.ans[i] === q.a) r++; });
     if(r > S.quiz.best) S.quiz.best = r;
+    track("quiz_answer", {question:qi + 1, right:oj === QUIZ[qi].a ? "yes" : "no", score:r + " of " + QUIZ.length});
     save(); var yy = window.scrollY; render(); window.scrollTo(0, yy); return;
   }
   var a = d.act;
@@ -2107,7 +2115,7 @@ document.addEventListener("click", function(e){
   else if(a === "logsave") saveLog();
   else if(a === "addmeet") openSheet({kind:"meet", pre:{}});
   else if(a === "savemeet") saveMeet();
-  else if(a === "obdone"){ S.welcomed = true; save(); ui.ob = 0; ui.openDay = 1; go("learn"); toast("Lesson 1 is open. Go at your own pace."); }
+  else if(a === "obdone"){ S.welcomed = true; track("onboarding_done"); save(); ui.ob = 0; ui.openDay = 1; go("learn"); toast("Lesson 1 is open. Go at your own pace."); }
   else if(a === "ernestlive"){ if(confirm("Only tap this if Ernest told you that you are live.")){ S.ernestLive = true; save(); go("today"); } }
   else if(a === "setstart"){ var sd = val("startDate"); if(!sd){ toast("Pick a date"); return; } S.start = sd; S.startSet = true; save(); render(); toast("Start date saved"); }
   else if(a === "anothertip"){ if(ui.tip){ ui.tip.i = pickTip(ui.tip.ctx, ui.tip.i); render(); } }
@@ -2121,17 +2129,17 @@ document.addEventListener("click", function(e){
   else if(a === "applyupdate") applyUpdate();
   else if(a === "moreback") go("more");
   else if(a === "quizreset"){ S.quiz.ans = {}; save(); render(); window.scrollTo(0, 0); }
-  else if(a === "export") download("diyama-setter-backup-" + today() + ".json", JSON.stringify(S, null, 2), "application/json");
-  else if(a === "wipe"){ if(confirm("Erase everything on this device? Export a backup first if unsure.")){ var th = S.theme; S = blank(); S.theme = th; save(); ui.tip = null; go("today"); } }
+  else if(a === "export"){ track("backup_exported"); download("diyama-setter-backup-" + today() + ".json", JSON.stringify(S, null, 2), "application/json"); }
+  else if(a === "wipe"){ if(confirm("Erase everything on this device? Export a backup first if unsure.")){ track("device_erased"); var th = S.theme; S = blank(); S.theme = th; save(); ui.tip = null; go("today"); } }
 });
 
 document.addEventListener("change", function(e){
   var t = e.target, d = t.dataset || {};
   if(d.obok){ ui.obOk = t.checked; render(); return; }
-  if(d.done){ var n = +d.done; if(t.checked){ S.done[n] = true; S.doneAt[n] = today(); ui.openDay = "auto"; } else { delete S.done[n]; delete S.doneAt[n]; } save(); render(); if(t.checked){ var nx = nextDay(); toast(nx ? "Lesson " + n + " done. Lesson " + nx + " is open." : "All 14 lessons done. Check the Gate."); var ne = nx && $("day" + nx); if(ne) ne.scrollIntoView({block:"start"}); } return; }
-  if(d.confirm){ var m = findMeet(d.confirm); if(m){ m.confirmed = t.checked; m.confirmedAt = t.checked ? Date.now() : ""; save(); render(); if(t.checked) toast("Ernest confirmed"); } return; }
+  if(d.done){ var n = +d.done; if(t.checked){ S.done[n] = true; S.doneAt[n] = today(); ui.openDay = "auto"; } else { delete S.done[n]; delete S.doneAt[n]; } track(t.checked ? "lesson_done" : "lesson_unticked", {lesson:n, title:DAYS[n - 1] && DAYS[n - 1].title, total:doneCount() + " of 14"}); save(); render(); if(t.checked){ var nx = nextDay(); toast(nx ? "Lesson " + n + " done. Lesson " + nx + " is open." : "All 14 lessons done. Check the Gate."); var ne = nx && $("day" + nx); if(ne) ne.scrollIntoView({block:"start"}); } return; }
+  if(d.confirm){ var m = findMeet(d.confirm); if(m){ m.confirmed = t.checked; m.confirmedAt = t.checked ? Date.now() : ""; if(t.checked) track("meeting_step", {business:m.business, step:"Ernest confirmed ticked"}); save(); render(); if(t.checked) toast("Ernest confirmed"); } return; }
   if(d.attend){ var b = $("hs_" + d.attend); if(b) b.disabled = !t.checked; t.parentNode.classList.toggle("on", t.checked); return; }
-  if(d.won){ var mw = findMeet(d.won); if(mw){ mw.won = t.checked; mw.wonDate = t.checked ? (mw.wonDate || today()) : ""; mw.outcomeAt = Date.now(); var bw = findBiz(mw.bizId); if(bw){ bw.stage = t.checked ? "Won" : "Held"; if(t.checked) pushAct(bw, "won", ""); } ui.tip = null; save(); render(); if(t.checked) toast("Client won. K300 once Ernest confirms."); } return; }
+  if(d.won){ var mw = findMeet(d.won); if(mw){ mw.won = t.checked; mw.wonDate = t.checked ? (mw.wonDate || today()) : ""; mw.outcomeAt = Date.now(); var bw = findBiz(mw.bizId); if(bw){ bw.stage = t.checked ? "Won" : "Held"; if(t.checked) pushAct(bw, "won", ""); } if(t.checked) track("client_won", {business:mw.business}); ui.tip = null; save(); render(); if(t.checked) toast("Client won. K300 once Ernest confirms."); } return; }
   if(d.wondate){ var wd = findMeet(d.wondate); if(wd && t.value){ wd.wonDate = t.value; save(); render(); } return; }
   if(/^mf_c\d$/.test(t.id)){ updateMeetSave(); return; }
   if(t.id === "mf_biz"){
@@ -2201,6 +2209,43 @@ function setupInstall(){
   try{ $("appleIcon").setAttribute("href", iconPng(180)); }catch(e){}
 }
 
+/* ================= ACTIVITY LOG =================
+   A short record of what happens in the office (opened, lesson done, business added, meeting booked),
+   sent to Diyama's private log so Ernest can follow progress. Business names only: never a decision
+   maker's name, a phone number or a note. Events wait in a queue on the phone and are sent when there
+   is a connection, so nothing is lost offline. The queue is separate from her work data. */
+var LOGQ_KEY = "diyama_setter_logq", INST_KEY = "diyama_setter_inst", LOG_URL = "/api/log";
+var INST = (function(){ var v = ""; try{ v = localStorage.getItem(INST_KEY) || ""; if(!v){ v = uid("i"); localStorage.setItem(INST_KEY, v); } }catch(e){} return v; })();
+var lastView = "", lastOpen = 0, flushing = false, flushT = null;
+function logq(){ try{ return JSON.parse(localStorage.getItem(LOGQ_KEY) || "[]") || []; }catch(e){ return []; } }
+function setLogq(q){ try{ localStorage.setItem(LOGQ_KEY, JSON.stringify(q.slice(-300))); }catch(e){} }
+function track(ev, data){
+  var o = {t:new Date().toISOString(), e:ev};
+  for(var k in (data || {})) if(data[k] !== "" && data[k] != null) o[k] = String(data[k]).slice(0, 120);
+  var q = logq(); q.push(o); setLogq(q);
+  clearTimeout(flushT); flushT = setTimeout(flushLog, 2500);
+}
+function flushLog(){
+  if(flushing || !/^https?:$/.test(location.protocol) || !window.fetch) return;
+  var q = logq(); if(!q.length) return;
+  var batch = q.slice(0, 50); flushing = true;
+  fetch(LOG_URL, {method:"POST", headers:{"Content-Type":"application/json"}, keepalive:true,
+    body:JSON.stringify({inst:INST, dev:DEVICE || "", ver:VERSION, events:batch})})
+    .then(function(r){ if(!r.ok) return false; setLogq(logq().slice(batch.length)); return true; })
+    .catch(function(){ return false; })
+    .then(function(sent){ flushing = false; if(sent && logq().length) setTimeout(flushLog, 1000); });
+}
+function trackOpen(){
+  if(Date.now() - lastOpen < 10 * 60000) return;
+  lastOpen = Date.now();
+  track("opened", {where:phaseText(), lessons:doneCount() + " of 14", device:DEVICE || "not set"});
+}
+document.addEventListener("click", function(e){
+  var l = e.target.closest && e.target.closest("a[data-log]");
+  if(l) track(l.getAttribute("data-log"));
+}, true);
+setInterval(function(){ if(!document.hidden) flushLog(); }, 5 * 60000);
+
 /* ================= UPDATES =================
    Her data sits in this browser under KEY, which a new version never touches, so updating is just a reload.
    Coming back to the app picks up a new version straight away. While she is working, a bar offers it
@@ -2224,17 +2269,17 @@ function showUpdateBar(){
   document.body.appendChild(d);
 }
 function applyUpdate(){
-  save();
+  save(); track("updated", {from:VERSION, to:pendingUpdate}); flushLog();
   try{ localStorage.setItem(SNAP_KEY, JSON.stringify({at:new Date().toISOString(), from:VERSION, to:pendingUpdate, data:S})); }catch(e){}
   location.reload();
 }
 /* Ask the browser not to clear her data when the phone runs low on space. */
 try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
-document.addEventListener("visibilitychange", function(){ if(!document.hidden) checkUpdate(true); });
+document.addEventListener("visibilitychange", function(){ if(!document.hidden){ trackOpen(); checkUpdate(true); } else flushLog(); });
 setInterval(function(){ if(!document.hidden) checkUpdate(false); }, 30 * 60000);
 
 /* ================= START ================= */
-load(); applyTheme(); render(); setupInstall();
+load(); applyTheme(); render(); setupInstall(); trackOpen(); flushLog();
 /* Time windows (reminders, nudges, did it happen) change by the minute, so refresh quietly. */
 setInterval(function(){
   if(sheet || document.hidden) return;
