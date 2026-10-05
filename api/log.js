@@ -9,10 +9,14 @@ const EVENTS = new Set([
   "lesson_opened", "lesson_done", "lesson_unticked", "quiz_answer",
   "business_added", "business_edited", "activity",
   "meeting_booked", "meeting_rescheduled", "meeting_edited", "meeting_step", "meeting_outcome", "client_won",
-  "progress_sent", "weekly_report_sent", "backup_exported", "device_erased", "updated"
+  "progress_sent", "weekly_report_sent", "backup_exported", "device_erased", "updated",
+  "idea_added"
 ]);
 const FIELDS = ["where", "lessons", "device", "page", "lesson", "title", "total", "question", "right", "score",
-  "business", "type", "territory", "what", "stage", "date", "time", "channel", "step", "outcome", "from", "to"];
+  "business", "type", "territory", "what", "stage", "date", "time", "channel", "step", "outcome", "from", "to",
+  "idea", "for", "category", "problem", "details"];
+/* An idea needs room to be explained; everything else stays short. */
+const LONG = { problem: 1000, details: 1000, idea: 200 };
 const ORIGINS = /^https:\/\/(angel\.diyama\.online|diyama-setter(-[a-z0-9-]+)?\.vercel\.app)$|^http:\/\/localhost(:\d+)?$/;
 
 function clean(s, n) { return String(s == null ? "" : s).replace(/[\u0000-\u001f]/g, " ").slice(0, n); }
@@ -28,7 +32,7 @@ export default async function handler(req, res) {
 
   const events = body.events.slice(0, 50).filter((e) => e && EVENTS.has(e.e)).map((e) => {
     const o = { t: clean(e.t, 30), e: e.e };
-    for (const k of FIELDS) if (e[k] != null && e[k] !== "") o[k] = clean(e[k], 120);
+    for (const k of FIELDS) if (e[k] != null && e[k] !== "") o[k] = clean(e[k], LONG[k] || 120);
     return o;
   });
   if (!events.length) return res.status(200).json({ stored: 0 });

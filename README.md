@@ -22,6 +22,8 @@ Live at https://diyama-setter.vercel.app. Vercel project `diyama-setter` on team
 
 **Activity log**: the app records what happens (opened, lesson opened and completed, quiz answers, businesses added, activity logged, meetings booked and their steps and outcomes, reports sent, updates) and posts it to `api/log.js`, which keeps only allow-listed events and fields and stores each batch privately in the Vercel Blob store `angel-office-log` (team tres4, linked to this project). Business names only, never people's names, phone numbers or notes. Events queue on the phone while offline. Read it from this folder with `node tools/read-log.mjs` (last 7 days, Lusaka time), `--days 30`, or `--json`. The token is in `.env.local` (gitignored); if missing, `vercel env pull .env.local --scope tres4`. Angel is told on her Today card what is shared.
 
+**Ideas**: a sixth tab, Ideas, where Angel adds apps and ideas she would like Diyama to build as samples for clients, everyday to commercial. Each one is kept on her device and sent to the activity log as `idea_added`; read them all with `node tools/read-log.mjs --ideas`. The Today page carries a card pointing to it, and the progress report counts them.
+
 **Progress to Ernest**: the Today page has "Send progress to Ernest", one tap to WhatsApp with lessons done, the next lesson, pipeline counts, follow-ups due and meetings waiting for his YES. Counts only, no client numbers.
 
 ## How to give it to Angel

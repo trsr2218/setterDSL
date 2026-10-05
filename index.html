@@ -7,7 +7,7 @@
 <meta name="description" content="Internal work app for Diyama appointment setters: today's list, pipeline, meetings and training." />
 <meta name="robots" content="noindex, nofollow" />
 <!-- Bump on every deploy. Open copies compare it against the live file and update themselves. -->
-<meta name="app-version" content="2026-10-05.2" />
+<meta name="app-version" content="2026-10-05.3" />
 <script defer src="/_vercel/insights/script.js"></script>
 <meta name="theme-color" content="#1f5c4d" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -86,7 +86,7 @@
   .navdot{display:inline-block; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--danger); color:#fff; font-size:11px; font-weight:700; line-height:18px; text-align:center}
   @media(max-width:720px){
     .topnav{display:none}
-    .botnav{display:grid; grid-template-columns:repeat(5,1fr); position:fixed; left:0; right:0; bottom:0; z-index:60;
+    .botnav{display:grid; grid-auto-flow:column; grid-auto-columns:1fr; position:fixed; left:0; right:0; bottom:0; z-index:60;
       background:var(--header-bg); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
       border-top:1px solid var(--border); padding-bottom:env(safe-area-inset-bottom)}
     .botnav button{position:relative; background:none; border:none; min-height:62px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; color:var(--muted); font-size:11.5px; font-weight:600; cursor:pointer; padding:6px 0}
@@ -963,7 +963,7 @@ function blank(){
     done:{}, doneAt:{}, skip:{}, quiz:{ans:{}, best:0},
     biz:[], meetings:[],
     gate:{from:"", contacted:"", replies:"", trackerOk:"no", breaches:0},
-    tipsSeen:{}, theme:"", migrated:"" };
+    tipsSeen:{}, theme:"", migrated:"", ideas:[] };
 }
 var S = blank();
 var ui = { view:"today", sub:"", q:"", stage:"all", openBiz:{}, openDay:"auto", tip:null, outc:{}, flash:"", showPast:false };
@@ -993,6 +993,7 @@ function mergeV2(o){
   b.meetings.forEach(function(m){ if(!Array.isArray(m.checks)) m.checks = [true,true,true,true]; });
   var g = obj(o.gate);
   b.gate = { from: str(g.from), contacted: str(g.contacted), replies: str(g.replies), trackerOk: g.trackerOk === "yes" ? "yes" : "no", breaches: Math.max(0, +g.breaches || 0) };
+  b.ideas = Array.isArray(o.ideas) ? o.ideas.filter(function(x){ return x && x.id && x.title; }) : [];
   b.tipsSeen = obj(o.tipsSeen); b.theme = str(o.theme); b.migrated = str(o.migrated);
   S = b;
 }
@@ -1363,10 +1364,11 @@ var ICONS = {
   pipeline:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg>',
   meetings:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M9 15l2 2 4-4"/></svg>',
   learn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M9 7h7M9 11h5"/></svg>',
+  ideas:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>',
   more:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>'
 };
-var VIEWS = [["today","Today"],["pipeline","Pipeline"],["meetings","Meetings"],["learn","Learn"],["more","More"]];
-var VIEWS_LAPTOP = [["today","Home"],["learn","Learn"],["more","More"]];
+var VIEWS = [["today","Today"],["pipeline","Pipeline"],["meetings","Meetings"],["learn","Learn"],["ideas","Ideas"],["more","More"]];
+var VIEWS_LAPTOP = [["today","Home"],["learn","Learn"],["ideas","Ideas"],["more","More"]];
 
 /* ================= DEVICE =================
    Her work is saved on one device only. The phone is the work device (WhatsApp lives there).
@@ -1437,6 +1439,7 @@ function render(){
   else if(v === "pipeline") h = viewPipeline();
   else if(v === "meetings") h = viewMeetings();
   else if(v === "learn") h = viewLearn();
+  else if(v === "ideas") h = viewIdeas();
   else h = viewMore();
   $("view").innerHTML = h;
   if(v === "more" && ui.sub === "prices"){ updatePrices(); updateFit(); }
@@ -1532,6 +1535,7 @@ function viewToday(){
     '<p class="small muted" style="margin:8px 0 0">Ernest confirms every meeting held and every client won. His confirmation is the payment.</p></div>';
   h += '<div class="card"><div class="eyebrow">For Ernest</div><h3>Send my progress</h3><p class="small muted">One tap opens WhatsApp to Ernest with your lessons and pipeline numbers. Send it at the end of every working day. Your office also notes when you open it, finish a lesson, add a business or book a meeting, so Ernest can follow your progress. Business names only. Never the names of people, phone numbers or your notes.</p>' +
     '<div class="mbtns"><a class="btn btn-primary" href="' + esc(waLink(ERNEST_WA, progressReport())) + '" data-log="progress_sent" target="_blank" rel="noopener">Send progress to Ernest</a><button class="btn btn-outline" data-act="copyprogress" type="button">Copy it</button></div></div>';
+  h += '<div class="card"><div class="spread"><div><div class="eyebrow">Ideas</div><b>Got an idea for an app or a sample?</b><br /><span class="small muted">' + (S.ideas.length ? S.ideas.length + ' shared so far.' : 'Everyday or commercial, all welcome.') + '</span></div><button class="btn btn-outline btn-sm" data-go="ideas" type="button">Add it</button></div></div>';
   h += '<div class="quick"><button class="btn btn-outline" data-act="addbiz" type="button">+ Business</button><button class="btn btn-primary" data-act="addmeet" type="button">+ Meeting</button></div>';
   return h;
 }
@@ -1834,6 +1838,37 @@ function weeklyReport(){
     fmtMonth(mon) + " so far, estimate: " + mm.math + (mm.capped ? " (" + mm.capped + " over the cap)" : ""),
     "Please correct anything that is wrong."].join("\n");
 }
+/* ================= IDEAS =================
+   Apps and ideas Angel would like Diyama to build as samples to show clients, from everyday use to commercial.
+   Every idea is kept here and sent to Diyama's log, so Ernest sees it the same day. */
+var IDEA_FOR = ["Everyday people","Small businesses","Big or commercial businesses","Diyama itself","Not sure yet"];
+var IDEA_TYPE = ["App","Website","Tool or automation","Content or campaign","Something else"];
+function viewIdeas(){
+  var h = pagehead("Ideas", "Apps and ideas Diyama could build as samples to show clients.");
+  h += '<div class="card"><div class="eyebrow">New idea</div><h3>What should we build?</h3><p class="small muted">Everyday or commercial, big or small, every idea is welcome. Ernest sees each one as soon as you save it.</p>' +
+    '<div class="field"><label for="id_title">The idea in a few words</label><input id="id_title" placeholder="e.g. A queue app for a busy clinic" autocomplete="off" /></div>' +
+    '<div class="grid2"><div class="field"><label for="id_for">Who is it for</label><select id="id_for">' + opts(IDEA_FOR, "") + '</select></div>' +
+    '<div class="field"><label for="id_type">What kind</label><select id="id_type">' + opts(IDEA_TYPE, "") + '</select></div></div>' +
+    '<div class="field"><label for="id_problem">What problem does it solve?</label><textarea id="id_problem" placeholder="Who struggles with what, today"></textarea></div>' +
+    '<div class="field"><label for="id_how">How would it work? (optional)</label><textarea id="id_how" placeholder="What a person would do with it, step by step"></textarea></div>' +
+    '<button class="btn btn-primary btn-block" data-act="saveidea" type="button">Save and share with Ernest</button></div>';
+  if(S.ideas.length){
+    h += '<h3 style="margin:18px 0 10px">My ideas (' + S.ideas.length + ')</h3>' + S.ideas.map(function(x){
+      return '<div class="card"><div class="spread"><b>' + esc(x.title) + '</b><span class="small muted">' + esc(fmtDate(x.d)) + '</span></div>' +
+        '<p class="small muted" style="margin:4px 0 8px">' + esc([x.type, x.forWho].filter(Boolean).join(", ")) + '</p>' +
+        (x.problem ? '<p style="margin:0 0 6px">' + esc(x.problem) + '</p>' : '') + (x.how ? '<p class="small" style="margin:0">' + esc(x.how) + '</p>' : '') + '</div>';
+    }).join("");
+  } else h += '<div class="card empty"><p class="muted" style="margin:0">No ideas yet. The first one does not have to be perfect.</p></div>';
+  return h;
+}
+function saveIdea(){
+  var title = val("id_title");
+  if(!title){ toast("Write the idea in a few words"); return; }
+  var x = { id:uid("d"), d:today(), title:title, forWho:val("id_for"), type:val("id_type"), problem:val("id_problem"), how:val("id_how") };
+  S.ideas.unshift(x); save();
+  track("idea_added", {idea:x.title, for:x.forWho, category:x.type, problem:x.problem, details:x.how});
+  render(); window.scrollTo(0, 0); toast("Saved. Ernest will see it.");
+}
 /* One tap progress for Ernest: where she is in the lessons and what the pipeline looks like right now.
    Counts only, never a client's phone number. */
 function progressReport(){
@@ -1848,6 +1883,7 @@ function progressReport(){
   lines.push("Businesses in my pipeline: " + S.biz.length + " (" + open.length + " open)",
     "This week: " + w.contacted + " contacted, " + w.replies + " replies, " + w.booked + " meetings booked, " + w.held + " held",
     "Follow-ups due now: " + S.biz.filter(bizDue).length + ", stale: " + S.biz.filter(bizStale).length,
+    "Ideas shared: " + S.ideas.length,
     "Meetings coming up: " + booked.length + (booked.length ? ", " + booked.filter(function(m){ return !m.confirmed; }).length + " waiting for your YES" : ""),
     "Sent from Angel's Office.");
   return lines.join("\n");
@@ -2126,6 +2162,7 @@ document.addEventListener("click", function(e){
   else if(a === "csvbiz") exportBizCsv();
   else if(a === "copyreport") copyText(weeklyReport());
   else if(a === "copyprogress") copyText(progressReport());
+  else if(a === "saveidea") saveIdea();
   else if(a === "applyupdate") applyUpdate();
   else if(a === "moreback") go("more");
   else if(a === "quizreset"){ S.quiz.ans = {}; save(); render(); window.scrollTo(0, 0); }
@@ -2221,7 +2258,7 @@ function logq(){ try{ return JSON.parse(localStorage.getItem(LOGQ_KEY) || "[]") 
 function setLogq(q){ try{ localStorage.setItem(LOGQ_KEY, JSON.stringify(q.slice(-300))); }catch(e){} }
 function track(ev, data){
   var o = {t:new Date().toISOString(), e:ev};
-  for(var k in (data || {})) if(data[k] !== "" && data[k] != null) o[k] = String(data[k]).slice(0, 120);
+  for(var k in (data || {})) if(data[k] !== "" && data[k] != null) o[k] = String(data[k]).slice(0, k === "problem" || k === "details" ? 1000 : 200);
   var q = logq(); q.push(o); setLogq(q);
   clearTimeout(flushT); flushT = setTimeout(flushLog, 2500);
 }

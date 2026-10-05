@@ -16,8 +16,9 @@ if (!process.env.BLOB_READ_WRITE_TOKEN) {
   process.env.BLOB_READ_WRITE_TOKEN = m[1];
 }
 const args = process.argv.slice(2);
-const days = +(args[args.indexOf("--days") + 1] || 0) || 7;
+const days = args.includes("--ideas") ? 3650 : (+(args[args.indexOf("--days") + 1] || 0) || 7);
 const asJson = args.includes("--json");
+const onlyIdeas = args.includes("--ideas");   /* every idea ever shared, nothing else */
 const since = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 
 const blobs = [];
@@ -34,6 +35,7 @@ for (const b of blobs.filter((b) => b.pathname.slice(4, 14) >= since)) {
   for (const e of rec.events) events.push({ ...e, dev: rec.dev, ver: rec.ver });
 }
 events.sort((a, b) => (a.t < b.t ? -1 : 1));
+if (onlyIdeas) events.splice(0, events.length, ...events.filter((e) => e.e === "idea_added"));
 if (asJson) { console.log(JSON.stringify(events, null, 2)); process.exit(0); }
 
 const lusaka = (t) => new Date(new Date(t).getTime() + 2 * 3600000).toISOString().replace("T", " ").slice(0, 16);
@@ -59,7 +61,8 @@ const say = {
   weekly_report_sent: () => "sent the weekly report",
   backup_exported: () => "exported a backup",
   device_erased: () => "ERASED the data on a device",
-  updated: (e) => `app updated ${e.from} to ${e.to}`
+  updated: (e) => `app updated ${e.from} to ${e.to}`,
+  idea_added: (e) => `NEW IDEA: ${e.idea}${e.category ? " (" + e.category + (e.for ? ", for " + e.for : "") + ")" : ""}${e.problem ? "\n           Problem: " + e.problem : ""}${e.details ? "\n           How: " + e.details : ""}`
 };
 let day = "";
 for (const e of events) {
