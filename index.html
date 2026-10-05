@@ -6,6 +6,9 @@
 <title>Angel's Office | Diyama Solutions</title>
 <meta name="description" content="Internal work app for Diyama appointment setters: today's list, pipeline, meetings and training." />
 <meta name="robots" content="noindex, nofollow" />
+<!-- Bump on every deploy. Open copies compare it against the live file and update themselves. -->
+<meta name="app-version" content="2026-10-05.1" />
+<script defer src="/_vercel/insights/script.js"></script>
 <meta name="theme-color" content="#1f5c4d" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -925,7 +928,8 @@ var TIPS = [
 
 /* ================= APP SETTINGS ================= */
 var ERNEST_WA = "260966138238";
-var KEY = "diyama_setter_v2", KEY_V1 = "diyama_setter_v1";
+/* Never rename KEY: her data lives under it and survives every update. New fields go into blank() and mergeV2(). */
+var KEY = "diyama_setter_v2", KEY_V1 = "diyama_setter_v1", SNAP_KEY = "diyama_setter_v2_before_update";
 var CAP_MONTH = 6, FEE_HELD = 150, FEE_WON = 300, CAP_DAYS = 90;
 var CADENCE = [2, 5];          /* follow-up 1 and 2, in days after the first message: three touches in all, matching the lessons and clause 7.1 */
 var MAX_FU = 2;                /* after this many follow-ups with no reply: stop. First message plus two follow-ups is the three touch limit */
@@ -970,6 +974,8 @@ function load(){
   var raw = null, old = null;
   try{ raw = localStorage.getItem(KEY); }catch(e){}
   if(raw){ try{ mergeV2(JSON.parse(raw)); }catch(e){} return; }
+  /* Safety net: if the main copy is ever missing, fall back to the snapshot taken before the last update. */
+  try{ var snap = JSON.parse(localStorage.getItem(SNAP_KEY) || "null"); if(snap && snap.data){ mergeV2(snap.data); save(); return; } }catch(e){}
   try{ old = localStorage.getItem(KEY_V1); }catch(e){}
   if(old){ try{ migrateV1(JSON.parse(old)); }catch(e){} }
   save();
@@ -1521,6 +1527,8 @@ function viewToday(){
     '<div class="small muted" style="font-weight:700; margin-bottom:4px">' + esc(fmtMonth(mon)) + ', estimate</div><div class="math">' + esc(mm.math) + '</div>' +
     (mm.capped ? '<p class="small muted" style="margin:8px 0 0">' + mm.capped + ' held meeting(s) this month are over the cap of ' + CAP_MONTH + ' paid in the first 90 days, so their K150 is not counted. A client won still pays K300.</p>' : '') +
     '<p class="small muted" style="margin:8px 0 0">Ernest confirms every meeting held and every client won. His confirmation is the payment.</p></div>';
+  h += '<div class="card"><div class="eyebrow">For Ernest</div><h3>Send my progress</h3><p class="small muted">One tap opens WhatsApp to Ernest with your lessons and pipeline numbers. Send it at the end of every working day.</p>' +
+    '<div class="mbtns"><a class="btn btn-primary" href="' + esc(waLink(ERNEST_WA, progressReport())) + '" target="_blank" rel="noopener">Send progress to Ernest</a><button class="btn btn-outline" data-act="copyprogress" type="button">Copy it</button></div></div>';
   h += '<div class="quick"><button class="btn btn-outline" data-act="addbiz" type="button">+ Business</button><button class="btn btn-primary" data-act="addmeet" type="button">+ Meeting</button></div>';
   return h;
 }
@@ -1823,6 +1831,24 @@ function weeklyReport(){
     fmtMonth(mon) + " so far, estimate: " + mm.math + (mm.capped ? " (" + mm.capped + " over the cap)" : ""),
     "Please correct anything that is wrong."].join("\n");
 }
+/* One tap progress for Ernest: where she is in the lessons and what the pipeline looks like right now.
+   Counts only, never a client's phone number. */
+function progressReport(){
+  var w = weekStats(), t = today(), last = "";
+  Object.keys(S.doneAt).forEach(function(k){ if(S.doneAt[k] > last) last = S.doneAt[k]; });
+  var open = S.biz.filter(function(b){ return !closedStage(b.stage) && b.stage !== "Parked"; });
+  var booked = S.meetings.filter(function(m){ return m.status === "booked" && !isPast(m); });
+  var lines = ["Progress from Angel, " + fmtLong(t),
+    "Where I am: " + phaseText(),
+    "Lessons done: " + doneCount() + " of 14" + (last ? ", last one on " + fmtDate(last) : ", none yet")];
+  if(training() && nextDay()) lines.push("Next lesson: " + nextDay() + ", " + DAYS[nextDay() - 1].title);
+  lines.push("Businesses in my pipeline: " + S.biz.length + " (" + open.length + " open)",
+    "This week: " + w.contacted + " contacted, " + w.replies + " replies, " + w.booked + " meetings booked, " + w.held + " held",
+    "Follow-ups due now: " + S.biz.filter(bizDue).length + ", stale: " + S.biz.filter(bizStale).length,
+    "Meetings coming up: " + booked.length + (booked.length ? ", " + booked.filter(function(m){ return !m.confirmed; }).length + " waiting for your YES" : ""),
+    "Sent from Angel's Office.");
+  return lines.join("\n");
+}
 function viewBackup(){
   return '<div class="card"><div class="eyebrow">Backup</div><h2>Export and import my data</h2><p class="muted">Everything is saved only in this browser on this phone. If the browser data is cleared, it is gone. Export a backup every week and send the file to Ernest on WhatsApp.</p>' +
     '<div class="row"><button class="btn btn-primary" data-act="export" type="button">Export backup (JSON)</button></div>' +
@@ -2091,6 +2117,8 @@ document.addEventListener("click", function(e){
   else if(a === "csvmeet") exportMeetCsv();
   else if(a === "csvbiz") exportBizCsv();
   else if(a === "copyreport") copyText(weeklyReport());
+  else if(a === "copyprogress") copyText(progressReport());
+  else if(a === "applyupdate") applyUpdate();
   else if(a === "moreback") go("more");
   else if(a === "quizreset"){ S.quiz.ans = {}; save(); render(); window.scrollTo(0, 0); }
   else if(a === "export") download("diyama-setter-backup-" + today() + ".json", JSON.stringify(S, null, 2), "application/json");
@@ -2172,6 +2200,38 @@ function setupInstall(){
   try{ $("manifestLink").setAttribute("href", "data:application/manifest+json," + encodeURIComponent(JSON.stringify(man))); }catch(e){}
   try{ $("appleIcon").setAttribute("href", iconPng(180)); }catch(e){}
 }
+
+/* ================= UPDATES =================
+   Her data sits in this browser under KEY, which a new version never touches, so updating is just a reload.
+   Coming back to the app picks up a new version straight away. While she is working, a bar offers it
+   instead, so nothing she is typing is lost. A snapshot of her data is kept before every update. */
+var VERSION = (document.querySelector('meta[name="app-version"]') || {}).content || "";
+var pendingUpdate = "";
+function checkUpdate(applyNow){
+  if(!VERSION || !/^https?:$/.test(location.protocol) || !window.fetch) return;
+  fetch(location.pathname + "?u=" + Date.now(), {cache:"no-store"}).then(function(r){ return r.ok ? r.text() : ""; }).then(function(txt){
+    var m = /<meta name="app-version" content="([^"]+)"/.exec(txt || "");
+    if(!m || m[1] === VERSION) return;
+    pendingUpdate = m[1];
+    var a = document.activeElement, busy = sheet || (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName));
+    if(applyNow && !busy) applyUpdate(); else showUpdateBar();
+  }).catch(function(){});
+}
+function showUpdateBar(){
+  if($("updbar")) return;
+  var d = document.createElement("div"); d.id = "updbar"; d.className = "toast show"; d.style.pointerEvents = "auto";
+  d.innerHTML = 'A new version of your office is ready. <button class="btn btn-primary btn-sm" data-act="applyupdate" type="button" style="margin-left:8px">Update now</button>';
+  document.body.appendChild(d);
+}
+function applyUpdate(){
+  save();
+  try{ localStorage.setItem(SNAP_KEY, JSON.stringify({at:new Date().toISOString(), from:VERSION, to:pendingUpdate, data:S})); }catch(e){}
+  location.reload();
+}
+/* Ask the browser not to clear her data when the phone runs low on space. */
+try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
+document.addEventListener("visibilitychange", function(){ if(!document.hidden) checkUpdate(true); });
+setInterval(function(){ if(!document.hidden) checkUpdate(false); }, 30 * 60000);
 
 /* ================= START ================= */
 load(); applyTheme(); render(); setupInstall();

@@ -2,7 +2,7 @@
 
 Angel Nawa's work app for appointment setting at Diyama Solutions. It is made for her phone: a daily to-do list, a pipeline tracker, a meetings page that makes sure Ernest attends every call she books, the 14 day training, and a library of short sales tips. Version 2.
 
-One file: `index.html`. No build, no backend, no sign in, no external AI calls. The only outside request is Google Fonts.
+One file: `index.html`. No build, no backend, no sign in, no external AI calls. Outside requests: Google Fonts, and Vercel Web Analytics (cookieless page view counts, enabled 5 Oct 2026), which shows Ernest which days the app was opened. It never sees her data.
 
 ## What is in it
 
@@ -16,7 +16,11 @@ Pay logic: K150 per held meeting Ernest attended, at most 6 paid per calendar mo
 
 ## Where it lives
 
-Live at https://diyama-setter.vercel.app. Vercel project `diyama-setter` on team `tres4`, connected to GitHub `trsr2218/setterDSL`. **Every push to `main` deploys to production automatically.** To change the app: edit `index.html`, commit, push. Nothing else.
+Live at https://diyama-setter.vercel.app. Vercel project `diyama-setter` on team `tres4`, connected to GitHub `trsr2218/setterDSL`. **Every push to `main` deploys to production automatically.** To change the app: edit `index.html`, **bump the `app-version` meta tag**, commit, push. Nothing else.
+
+**Updates never lose her data.** Her data lives in the phone's browser under `diyama_setter_v2`, which no deploy touches. Never rename that key; add new fields to `blank()` and `mergeV2()`. Open copies check the live `app-version`: coming back to the app updates at once, while she is working a bar offers "Update now" so nothing being typed is lost. A snapshot is saved to `diyama_setter_v2_before_update` before each update and is restored automatically if the main copy is ever missing. Data is per address: angel.diyama.online and diyama-setter.vercel.app keep separate copies, so she should only use one.
+
+**Progress to Ernest**: the Today page has "Send progress to Ernest", one tap to WhatsApp with lessons done, the next lesson, pipeline counts, follow-ups due and meetings waiting for his YES. Counts only, no client numbers.
 
 ## How to give it to Angel
 
